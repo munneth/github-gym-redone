@@ -66,7 +66,7 @@ export function ChartBarLabel() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={chartConfig} className="bg-[#FFBF00]">
           <BarChart
             accessibilityLayer
             data={chartData}

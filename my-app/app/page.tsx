@@ -5,6 +5,7 @@ export default function Home() {
     <>
       <div>
         <h1>Occupancy</h1>
+        <p>Check the console for cron job logs</p>
         <p>
           West Coast Time:{" "}
           {new Date().toLocaleString("en-US", {

@@ -29,6 +29,13 @@ export function getWestCoastTime() {
   });
   return westCoastTime;
 }
+export function getWestCoastDay() {
+  const now = new Date();
+  return now.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    weekday: "long", // Returns "Monday", "Tuesday", etc.
+  });
+}
 
 export async function getOccupancyInterval(url: string) {
   const time = getWestCoastTime();
@@ -73,10 +80,63 @@ async function processOccupancyData() {
     console.error("Job error:", error);
   }
 }
+function isOpen() {
+  const day = getWestCoastDay();
+  const time = getWestCoastTime();
+  const timeParts = time.split(" ")[1];
+  const hours = parseInt(timeParts.split(":")[0]);
+  const minutes = parseInt(timeParts.split(":")[1]);
+  const AMPM = timeParts.split(" ")[2];
 
+  // Monday - Friday: 6am-10pm
+  if (
+    day === "Monday" ||
+    day === "Tuesday" ||
+    day === "Wednesday" ||
+    day === "Thursday" ||
+    day === "Friday"
+  ) {
+    if (AMPM === "AM") {
+      // 6am-11:59am
+      if (hours >= 6 && hours <= 11) {
+        return true;
+      }
+    } else if (AMPM === "PM") {
+      // 12pm-10pm
+      if (hours >= 12 && hours <= 10) {
+        return true;
+      }
+    }
+  }
+
+  // Saturday - Sunday: 9am-9pm
+  if (day === "Saturday" || day === "Sunday") {
+    if (AMPM === "AM") {
+      // 9am-11:59am
+      if (hours >= 9 && hours <= 11) {
+        return true;
+      }
+    } else if (AMPM === "PM") {
+      // 12pm-9pm
+      if (hours >= 12 && hours <= 9) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 export async function GET() {
   try {
     // Process occupancy data (this will be called by cron-job.org every minute)
+    if (!isOpen()) {
+      return NextResponse.json({
+        success: true,
+        occupancy: null,
+        time: getWestCoastTime(),
+        message: "Facility is closed",
+      });
+    }
     await processOccupancyData();
 
     const occupancy = await getOccupancy(

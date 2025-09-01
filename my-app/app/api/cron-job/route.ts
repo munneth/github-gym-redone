@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
-import cron from "node-cron";
 import { neon } from "@neondatabase/serverless";
-// Initialize cron job when the module loads
-let cronInitialized = false;
 
 export async function getContent(url: string) {
   const response = await fetch(url);
@@ -43,43 +40,36 @@ export async function getOccupancyInterval(url: string) {
   return null;
 }
 
-// Initialize cron job to run every minute
-function initializeCron() {
-  if (cronInitialized) return;
+// This function will be called by Vercel Cron every minute
+async function processOccupancyData() {
+  console.log("Running cron job at:", new Date().toISOString());
+  try {
+    const occupancy = await getOccupancyInterval(
+      "https://rec.ucdavis.edu/facilityoccupancy"
+    );
+    const time = getWestCoastTime();
 
-  cron.schedule("* * * * *", async () => {
-    console.log("Running cron job at:", new Date().toISOString());
-    try {
-      const occupancy = await getOccupancyInterval(
-        "https://rec.ucdavis.edu/facilityoccupancy"
-      );
-      const time = getWestCoastTime();
-
-      if (occupancy) {
-        if (!process.env.DATABASE_URL) {
-          throw new Error("DATABASE_URL not found");
-        }
-        const sql = neon(process.env.DATABASE_URL);
-        await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy INTEGER, timestamp TIMESTAMP)`;
-        await sql`INSERT INTO occupancy_data (occupancy, timestamp) VALUES (${occupancy}, ${time})`;
-        console.log("Occupancy data saved to database");
+    if (occupancy) {
+      if (!process.env.DATABASE_URL) {
+        throw new Error("DATABASE_URL not found");
       }
-
-      console.log("Cron job completed - Occupancy:", occupancy, "Time:", time);
-    } catch (error) {
-      console.error("Cron job error:", error);
+      const sql = neon(process.env.DATABASE_URL);
+      await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TIMESTAMP)`;
+      await sql`INSERT INTO occupancy_data (occupancy, timestamp) VALUES (${occupancy}, ${new Date().toISOString()})`;
+      console.log("Occupancy data saved to database");
     }
-  });
 
-  cronInitialized = true;
-  console.log("Cron job initialized to run every minute");
+    console.log("Cron job completed - Occupancy:", occupancy, "Time:", time);
+  } catch (error) {
+    console.error("Cron job error:", error);
+  }
 }
-
-// Initialize cron when this route is first accessed
-initializeCron();
 
 export async function GET() {
   try {
+    // Process occupancy data (this will be called by Vercel Cron every minute)
+    await processOccupancyData();
+
     const occupancy = await getOccupancy(
       "https://rec.ucdavis.edu/facilityoccupancy"
     );
@@ -89,7 +79,7 @@ export async function GET() {
       success: true,
       occupancy,
       time,
-      message: "Cron job is running every minute",
+      message: "Vercel Cron will call this endpoint every minute",
     });
   } catch (error) {
     return NextResponse.json(

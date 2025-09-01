@@ -25,7 +25,7 @@ export function getWestCoastTime() {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    hour12: false,
+    hour12: true,
   });
   return westCoastTime;
 }
@@ -40,9 +40,9 @@ export async function getOccupancyInterval(url: string) {
   return null;
 }
 
-// This function will be called by Vercel Cron every minute
+// This function will be called by cron-job.org every minute
 async function processOccupancyData() {
-  console.log("Running cron job at:", new Date().toISOString());
+  console.log("Running job at:", new Date().toISOString());
   try {
     const occupancy = await getOccupancyInterval(
       "https://rec.ucdavis.edu/facilityoccupancy"
@@ -54,20 +54,22 @@ async function processOccupancyData() {
         throw new Error("DATABASE_URL not found");
       }
       const sql = neon(process.env.DATABASE_URL);
-      await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TIMESTAMP)`;
-      await sql`INSERT INTO occupancy_data (occupancy, timestamp) VALUES (${occupancy}, ${new Date().toISOString()})`;
+      await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TEXT, date DATE)`;
+      await sql`INSERT INTO occupancy_data (occupancy, timestamp, date) VALUES (${occupancy}, ${
+        getWestCoastTime().split(" ")[1]
+      }, ${new Date().toISOString().split("T")[0]})`;
       console.log("Occupancy data saved to database");
     }
 
-    console.log("Cron job completed - Occupancy:", occupancy, "Time:", time);
+    console.log("Job completed - Occupancy:", occupancy, "Time:", time);
   } catch (error) {
-    console.error("Cron job error:", error);
+    console.error("Job error:", error);
   }
 }
 
 export async function GET() {
   try {
-    // Process occupancy data (this will be called by Vercel Cron every minute)
+    // Process occupancy data (this will be called by cron-job.org every minute)
     await processOccupancyData();
 
     const occupancy = await getOccupancy(
@@ -79,7 +81,7 @@ export async function GET() {
       success: true,
       occupancy,
       time,
-      message: "Vercel Cron will call this endpoint every minute",
+      message: "Endpoint ready for cron-job.org to call every minute",
     });
   } catch (error) {
     return NextResponse.json(

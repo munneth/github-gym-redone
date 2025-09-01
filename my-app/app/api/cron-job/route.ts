@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import cron from "node-cron";
-
+import { neon } from "@neondatabase/serverless";
 // Initialize cron job when the module loads
 let cronInitialized = false;
 
@@ -55,14 +55,15 @@ function initializeCron() {
       );
       const time = getWestCoastTime();
 
-      // TODO: Save to database here
-      // await db.occupancy.create({
-      //   data: {
-      //     occupancy,
-      //     timestamp: new Date(),
-      //     westCoastTime: time
-      //   }
-      // });
+      if (occupancy) {
+        if (!process.env.DATABASE_URL) {
+          throw new Error("DATABASE_URL not found");
+        }
+        const sql = neon(process.env.DATABASE_URL);
+        await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy INTEGER, timestamp TIMESTAMP)`;
+        await sql`INSERT INTO occupancy_data (occupancy, timestamp) VALUES (${occupancy}, ${time})`;
+        console.log("Occupancy data saved to database");
+      }
 
       console.log("Cron job completed - Occupancy:", occupancy, "Time:", time);
     } catch (error) {

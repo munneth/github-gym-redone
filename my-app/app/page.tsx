@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ChartBarLabel } from "@/components/chartProd";
 
 export default function Home() {
   return (
@@ -19,6 +20,7 @@ export default function Home() {
             hour12: false,
           })}
         </p>
+        <ChartBarLabel />
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts";
 
@@ -17,44 +18,75 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-export const description = "A bar chart with a label";
+
+export const description = "A bar chart showing gym occupancy data";
 
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
+  occupancy: {
+    label: "24 Hour Occupancy",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig;
 
 export function ChartBarLabel() {
+  const [chartData, setChartData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const json = await fetch("/api/chart-data");
+        const data = await json.json();
+        if (data.success) {
+          const processedData = data.data.map(
+            (data: { timestamp: string; occupancy: string }) => ({
+              time: data.timestamp.split(":").slice(0, 2).join(":"),
+              occupancy: data.occupancy,
+            })
+          );
+          setChartData(processedData);
+          console.log(processedData);
+        }
+      } catch (error) {
+        console.error("Error fetching chart data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Bar Chart - Label</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>Gym Occupancy - Last 24 Hours</CardTitle>
+        <CardDescription>
+          Real-time occupancy data from UC Davis Recreation Center
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
           <BarChart
             accessibilityLayer
-            data={[]}
+            data={chartData}
             margin={{
               top: 20,
             }}
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="time"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) => value}
             />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="desktop" fill="var(--color-desktop)" radius={8}>
+            <Bar dataKey="occupancy" fill="var(--color-occupancy)" radius={8}>
               <LabelList
                 position="top"
                 offset={12}
@@ -67,10 +99,11 @@ export function ChartBarLabel() {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {loading ? "Loading data..." : `${chartData.length} data points`}{" "}
+          <TrendingUp className="h-4 w-4" />
         </div>
         <div className="text-muted-foreground leading-none">
-          Showing total visitors for the last 6 months
+          Showing occupancy data for the last 24 hours
         </div>
       </CardFooter>
     </Card>

@@ -67,7 +67,9 @@ async function processOccupancyData() {
       if (!exists.length) {
         await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TEXT, date DATE)`;
         await sql`INSERT INTO occupancy_data (occupancy, timestamp, date) VALUES (${occupancy}, ${
-          getWestCoastTime().split(" ")[1]
+          getWestCoastTime().split(" ")[1] +
+          " " +
+          getWestCoastTime().split(" ")[2]
         }, ${new Date().toISOString().split("T")[0]})`;
         console.log("Occupancy data saved to database");
       } else {

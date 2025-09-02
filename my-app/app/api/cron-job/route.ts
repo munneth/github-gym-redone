@@ -60,10 +60,13 @@ async function processOccupancyData() {
         throw new Error("DATABASE_URL not found");
       }
       const sql = neon(process.env.DATABASE_URL);
-      const exists =
-        await sql`SELECT * FROM occupancy_data WHERE timestamp = ${time} AND date = ${
-          new Date().toISOString().split("T")[0]
-        } AND occupancy = ${occupancy}`;
+      const exists = await sql`SELECT * FROM occupancy_data WHERE timestamp = ${
+        getWestCoastTime().split(" ")[1] +
+        " " +
+        getWestCoastTime().split(" ")[2]
+      } AND date = ${
+        new Date().toISOString().split("T")[0]
+      } AND occupancy = ${occupancy}`;
       if (!exists.length) {
         await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TEXT, date DATE)`;
         await sql`INSERT INTO occupancy_data (occupancy, timestamp, date) VALUES (${occupancy}, ${

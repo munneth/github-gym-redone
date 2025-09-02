@@ -97,15 +97,6 @@ function isOpen() {
   const minutes = parseInt(timeParts.split(":")[1]);
   const AMPM = time.split(" ")[2]; // Fix: get AMPM from the full time string, not timeParts
 
-  // Debug logging
-  console.log("isOpen() debug:");
-  console.log("  day:", day);
-  console.log("  time:", time);
-  console.log("  timeParts:", timeParts);
-  console.log("  hours:", hours);
-  console.log("  minutes:", minutes);
-  console.log("  AMPM:", AMPM);
-
   // Monday - Friday: 6am-10pm
   if (
     day === "Monday" ||
@@ -114,67 +105,44 @@ function isOpen() {
     day === "Thursday" ||
     day === "Friday"
   ) {
-    console.log("  Weekday detected");
     if (AMPM === "AM") {
       // 6am-11:59am
       if (hours >= 6 && hours <= 11) {
-        console.log("  AM hours check passed: hours >= 6 && hours <= 11");
         return true;
-      } else {
-        console.log("  AM hours check failed: hours =", hours);
       }
     } else if (AMPM === "PM") {
       // 12pm-10pm
       if (hours >= 12 && hours <= 10) {
-        console.log("  PM hours check passed: hours >= 12 && hours <= 10");
         return true;
-      } else {
-        console.log("  PM hours check failed: hours =", hours);
       }
     }
   }
 
   // Saturday - Sunday: 9am-9pm
   if (day === "Saturday" || day === "Sunday") {
-    console.log("  Weekend detected");
     if (AMPM === "AM") {
       // 9am-11:59am
       if (hours >= 9 && hours <= 11) {
-        console.log(
-          "  Weekend AM hours check passed: hours >= 9 && hours <= 11"
-        );
         return true;
-      } else {
-        console.log("  Weekend AM hours check failed: hours =", hours);
       }
     } else if (AMPM === "PM") {
       // 12pm-9pm
       if (hours >= 12 && hours <= 9) {
-        console.log(
-          "  Weekend PM hours check passed: hours >= 12 && hours <= 9"
-        );
         return true;
-      } else {
-        console.log("  Weekend PM hours check failed: hours =", hours);
       }
     }
   }
 
-  console.log("  Facility is CLOSED - no conditions met");
   return false;
 }
 export async function GET() {
   console.log("=== CRON ENDPOINT HIT ===", new Date().toISOString());
   console.log("Request received at:", getWestCoastTime());
-  console.log("Current UTC time:", new Date().toISOString());
-  console.log("West Coast day:", getWestCoastDay());
-  console.log("West Coast time:", getWestCoastTime());
 
   try {
     // Process occupancy data (this will be called by cron-job.org every minute)
     console.log("Checking if facility is open...");
     const openStatus = isOpen();
-    console.log("isOpen() returned:", openStatus);
 
     if (!openStatus) {
       console.log("Facility is CLOSED - returning early");

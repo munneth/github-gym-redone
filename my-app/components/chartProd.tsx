@@ -44,7 +44,7 @@ export function ChartBarLabel() {
               occupancy: data.occupancy,
             })
           );
-          setChartData(processedData);
+          setChartData(processedData.reverse());
           console.log(processedData);
         }
       } catch (error) {

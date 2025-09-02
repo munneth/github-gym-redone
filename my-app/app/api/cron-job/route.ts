@@ -95,7 +95,7 @@ function isOpen() {
   const timeParts = time.split(" ")[1];
   const hours = parseInt(timeParts.split(":")[0]);
   const minutes = parseInt(timeParts.split(":")[1]);
-  const AMPM = timeParts.split(" ")[2];
+  const AMPM = time.split(" ")[2]; // Fix: get AMPM from the full time string, not timeParts
 
   // Debug logging
   console.log("isOpen() debug:");

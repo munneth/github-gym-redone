@@ -93,11 +93,26 @@ function isOpen() {
   const day = getWestCoastDay();
   const time = getWestCoastTime();
   const timeParts = time.split(" ")[1];
-  const hours = parseInt(timeParts.split(":")[0]);
+  let hours = parseInt(timeParts.split(":")[0]);
   const minutes = parseInt(timeParts.split(":")[1]);
   const AMPM = time.split(" ")[2]; // Fix: get AMPM from the full time string, not timeParts
 
-  // Monday - Friday: 6am-10pm
+  // Convert 12-hour format to 24-hour format for PM times
+  if (AMPM === "PM" && hours !== 12) {
+    hours += 12;
+  }
+
+  // Temporary debugging
+  console.log("DEBUG isOpen():", {
+    day,
+    time,
+    timeParts,
+    hours,
+    minutes,
+    AMPM,
+  });
+
+  // Monday - Friday: 6am-10pm (Summer Hours)
   if (
     day === "Monday" ||
     day === "Tuesday" ||
@@ -105,34 +120,53 @@ function isOpen() {
     day === "Thursday" ||
     day === "Friday"
   ) {
+    console.log("  Weekday detected");
     if (AMPM === "AM") {
       // 6am-11:59am
       if (hours >= 6 && hours <= 11) {
+        console.log("  AM hours check passed: hours >= 6 && hours <= 11");
         return true;
+      } else {
+        console.log("  AM hours check failed: hours =", hours);
       }
     } else if (AMPM === "PM") {
-      // 12pm-10pm
-      if (hours >= 12 && hours <= 10) {
+      // 12pm-10pm (12:00-22:00 in 24-hour)
+      if (hours >= 12 && hours <= 22) {
+        console.log("  PM hours check passed: hours >= 12 && hours <= 22");
         return true;
+      } else {
+        console.log("  PM hours check failed: hours =", hours);
       }
     }
   }
 
-  // Saturday - Sunday: 9am-9pm
+  // Saturday - Sunday: 9am-9pm (Summer Hours)
   if (day === "Saturday" || day === "Sunday") {
+    console.log("  Weekend detected");
     if (AMPM === "AM") {
       // 9am-11:59am
       if (hours >= 9 && hours <= 11) {
+        console.log(
+          "  Weekend AM hours check passed: hours >= 9 && hours <= 11"
+        );
         return true;
+      } else {
+        console.log("  Weekend AM hours check failed: hours =", hours);
       }
     } else if (AMPM === "PM") {
-      // 12pm-9pm
-      if (hours >= 12 && hours <= 9) {
+      // 12pm-9pm (12:00-21:00 in 24-hour)
+      if (hours >= 12 && hours <= 21) {
+        console.log(
+          "  Weekend PM hours check passed: hours >= 12 && hours <= 21"
+        );
         return true;
+      } else {
+        console.log("  Weekend PM hours check failed: hours =", hours);
       }
     }
   }
 
+  console.log("  Facility is CLOSED - no conditions met");
   return false;
 }
 export async function GET() {

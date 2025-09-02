@@ -49,12 +49,16 @@ export async function getOccupancyInterval(url: string) {
 
 // This function will be called by cron-job.org every minute
 async function processOccupancyData() {
+  console.log("=== PROCESSING OCCUPANCY DATA ===");
   console.log("Running job at:", new Date().toISOString());
   try {
+    console.log("Calling getOccupancyInterval...");
     const occupancy = await getOccupancyInterval(
       "https://rec.ucdavis.edu/facilityoccupancy"
     );
+    console.log("getOccupancyInterval returned:", occupancy);
     const time = getWestCoastTime();
+    console.log("Current time:", time);
     if (occupancy) {
       if (!process.env.DATABASE_URL) {
         throw new Error("DATABASE_URL not found");
@@ -132,9 +136,14 @@ function isOpen() {
   return false;
 }
 export async function GET() {
+  console.log("=== CRON ENDPOINT HIT ===", new Date().toISOString());
+  console.log("Request received at:", getWestCoastTime());
+
   try {
     // Process occupancy data (this will be called by cron-job.org every minute)
+    console.log("Checking if facility is open...");
     if (!isOpen()) {
+      console.log("Facility is CLOSED - returning early");
       return NextResponse.json({
         success: true,
         occupancy: null,
@@ -142,6 +151,7 @@ export async function GET() {
         message: "Facility is closed",
       });
     }
+    console.log("Facility is OPEN - processing occupancy data...");
     await processOccupancyData();
 
     const occupancy = await getOccupancy(

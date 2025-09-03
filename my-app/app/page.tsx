@@ -20,7 +20,9 @@ export default function Home() {
             hour12: false,
           })}
         </p>
-        <ChartBarLabel />
+        <div className="w-7xl h-md">
+          <ChartBarLabel />
+        </div>
       </div>
     </>
   );

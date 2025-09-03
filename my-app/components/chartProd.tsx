@@ -47,10 +47,21 @@ export function ChartBarLabel() {
 
               return {
                 time: `${timeOnly} ${ampm}`,
-                occupancy: data.occupancy,
+                occupancy: parseInt(data.occupancy), // Convert to number for proper max calculation
               };
             }
           );
+
+          // Debug: Check the actual max value
+          const maxOccupancy = Math.max(
+            ...processedData.map((d: { occupancy: number }) => d.occupancy)
+          );
+          console.log("Max occupancy in data:", maxOccupancy);
+          console.log(
+            "All occupancy values:",
+            processedData.map((d: { occupancy: number }) => d.occupancy)
+          );
+
           setChartData(processedData.reverse());
         }
       } catch (error) {

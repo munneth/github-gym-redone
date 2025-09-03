@@ -101,7 +101,7 @@ export function ChartBarLabel() {
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel />}
+              content={<ChartTooltipContent hideLabel={false} />}
             />
             <Bar dataKey="occupancy" fill="var(--color-occupancy)" radius={8}>
               <LabelList

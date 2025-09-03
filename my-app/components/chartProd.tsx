@@ -39,13 +39,19 @@ export function ChartBarLabel() {
         const data = await json.json();
         if (data.success) {
           const processedData = data.data.map(
-            (data: { timestamp: string; occupancy: string }) => ({
-              time: data.timestamp.split(":").slice(0, 2).join(":"),
-              occupancy: data.occupancy,
-            })
+            (data: { timestamp: string; occupancy: string }) => {
+              // Simple parsing for format: "06:00:05 PM"
+              const [timePart, ampm] = data.timestamp.split(" "); // ["06:00:05", "PM"]
+              const [hours, minutes] = timePart.split(":"); // ["06", "00", "05"]
+              const timeOnly = `${hours}:${minutes}`; // "06:00"
+
+              return {
+                time: `${timeOnly} ${ampm}`,
+                occupancy: data.occupancy,
+              };
+            }
           );
           setChartData(processedData.reverse());
-          console.log(processedData);
         }
       } catch (error) {
         console.error("Error fetching chart data:", error);

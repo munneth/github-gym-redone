@@ -39,14 +39,24 @@ export function ChartBarLabel() {
         const data = await json.json();
         if (data.success) {
           const processedData = data.data.map(
-            (data: { timestamp: string; occupancy: string }) => {
+            (data: { timestamp: string; occupancy: string; date: string }) => {
               // Simple parsing for format: "06:00:05 PM"
               const [timePart, ampm] = data.timestamp.split(" "); // ["06:00:05", "PM"]
               const [hours, minutes] = timePart.split(":"); // ["06", "00", "05"]
               const timeOnly = `${hours}:${minutes}`; // "06:00"
 
+              // Format the date
+              const dateObj = new Date(data.date);
+              const formattedDate = dateObj.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              });
+
               return {
                 time: `${timeOnly} ${ampm}`,
+                date: formattedDate,
+                fullDateTime: `${formattedDate} ${timeOnly} ${ampm}`,
                 occupancy: parseInt(data.occupancy), // Convert to number for proper max calculation
               };
             }
@@ -62,7 +72,7 @@ export function ChartBarLabel() {
             processedData.map((d: { occupancy: number }) => d.occupancy)
           );
 
-          setChartData(processedData.reverse());
+          setChartData(processedData);
         }
       } catch (error) {
         console.error("Error fetching chart data:", error);
@@ -100,8 +110,19 @@ export function ChartBarLabel() {
               tickFormatter={(value) => value}
             />
             <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel={false} />}
+              cursor={true}
+              content={
+                <ChartTooltipContent
+                  hideLabel={false}
+                  labelFormatter={(value, payload) => {
+                    if (payload && payload[0]) {
+                      return `Date & Time: ${payload[0].payload.fullDateTime}`;
+                    }
+                    return value;
+                  }}
+                  formatter={(value, name) => [`${value} people`, "Occupancy"]}
+                />
+              }
             />
             <Bar dataKey="occupancy" fill="var(--color-occupancy)" radius={8}>
               <LabelList

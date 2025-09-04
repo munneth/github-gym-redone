@@ -107,7 +107,17 @@ export function ChartBarLabel() {
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value}
+              tickFormatter={(value) => {
+                // Only show labels for hourly times (when minutes are 00)
+                const timeMatch = value.match(/(\d{1,2}):(\d{2}) (AM|PM)/);
+                if (timeMatch) {
+                  const [, hours, minutes, ampm] = timeMatch;
+                  if (minutes === "00") {
+                    return value;
+                  }
+                }
+                return ""; // Don't show label for 30-minute intervals
+              }}
             />
             <ChartTooltip
               cursor={true}

@@ -35,6 +35,7 @@ export function ChartBarLabel() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch data from the last 24 hours only
         const json = await fetch("/api/chart-data");
         const data = await json.json();
         if (data.success) {
@@ -73,6 +74,9 @@ export function ChartBarLabel() {
           );
 
           setChartData(processedData);
+          console.log(
+            `Chart updated with ${processedData.length} data points from last 24 hours`
+          );
         }
       } catch (error) {
         console.error("Error fetching chart data:", error);
@@ -111,7 +115,7 @@ export function ChartBarLabel() {
                 // Only show labels for hourly times (when minutes are 00)
                 const timeMatch = value.match(/(\d{1,2}):(\d{2}) (AM|PM)/);
                 if (timeMatch) {
-                  const [, hours, minutes, ampm] = timeMatch;
+                  const [, , minutes] = timeMatch;
                   if (minutes === "00") {
                     return value;
                   }
@@ -130,7 +134,7 @@ export function ChartBarLabel() {
                     }
                     return value;
                   }}
-                  formatter={(value, name) => [`${value} people`, "Occupancy"]}
+                  formatter={(value) => [`${value} people`, "Occupancy"]}
                 />
               }
             />

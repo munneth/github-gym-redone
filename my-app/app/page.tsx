@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ChartBarLabel } from "@/components/chartProd";
+import Form from "@/components/form";
 
 export default function Home() {
   return (
@@ -20,8 +21,13 @@ export default function Home() {
             hour12: false,
           })}
         </p>
-        <div className="w-7xl h-md">
-          <ChartBarLabel />
+        <div className="flex gap-6">
+          <div className="flex-1">
+            <ChartBarLabel />
+          </div>
+          <div className="w-80">
+            <Form />
+          </div>
         </div>
       </div>
     </>

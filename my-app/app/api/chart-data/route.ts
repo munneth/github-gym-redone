@@ -39,6 +39,13 @@ export async function GET() {
     const sql = neon(process.env.DATABASE_URL);
 
     const window = get24HourWindow();
+
+    // Debug: Log the 24-hour window calculation
+    console.log("=== 24-HOUR WINDOW DEBUG ===");
+    console.log("Current time:", new Date().toISOString());
+    console.log("24-hour window:", window);
+    console.log("Is previous day included:", window.isPreviousDayIncluded);
+
     let chartData = [];
 
     if (window.isPreviousDayIncluded) {
@@ -60,6 +67,9 @@ export async function GET() {
       `;
 
       chartData = [...previousDayData, ...currentDayData];
+      console.log(
+        `Fetched ${previousDayData.length} records from previous day and ${currentDayData.length} from current day`
+      );
     } else {
       // All data is from the same day, just filter by time
       const sameDayData = await sql`
@@ -71,9 +81,33 @@ export async function GET() {
       `;
 
       chartData = sameDayData;
+      console.log(
+        `Fetched ${sameDayData.length} records from current day (24-hour window)`
+      );
     }
 
-    return NextResponse.json({ success: true, data: chartData });
+    console.log(`Total records in 24-hour window: ${chartData.length}`);
+
+    function getBestTime(chartData: Record<string, unknown>[]) {
+      const allOccupancy = chartData.map((item) => ({
+        occupancy: item.occupancy,
+        timestamp: item.timestamp,
+      }));
+
+      const sortedAllOccupancy = allOccupancy.sort(
+        (a, b) =>
+          parseInt(a.occupancy as string) - parseInt(b.occupancy as string)
+      );
+      console.log(sortedAllOccupancy);
+
+      return sortedAllOccupancy;
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: chartData,
+      bestTime: getBestTime(chartData),
+    });
   } catch (error) {
     return NextResponse.json(
       {

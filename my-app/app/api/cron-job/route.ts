@@ -37,6 +37,18 @@ export function getWestCoastDay() {
   });
 }
 
+export function getWestCoastDate() {
+  const now = new Date();
+  return now
+    .toLocaleString("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+    .replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$1-$2"); // Convert MM/DD/YYYY to YYYY-MM-DD
+}
+
 export async function getOccupancyInterval(url: string) {
   const time = getWestCoastTime();
   const timeParts = time.split(" ")[1]; // Get time part (HH:MM:SS)
@@ -58,7 +70,9 @@ async function processOccupancyData() {
     );
     console.log("getOccupancyInterval returned:", occupancy);
     const time = getWestCoastTime();
+    const date = getWestCoastDate();
     console.log("Current time:", time);
+    console.log("Current date (West Coast):", date);
     if (occupancy) {
       if (!process.env.DATABASE_URL) {
         throw new Error("DATABASE_URL not found");
@@ -68,17 +82,18 @@ async function processOccupancyData() {
         getWestCoastTime().split(" ")[1] +
         " " +
         getWestCoastTime().split(" ")[2]
-      } AND date = ${
-        new Date().toISOString().split("T")[0]
-      } AND occupancy = ${occupancy}`;
+      } AND date = ${getWestCoastDate()} AND occupancy = ${occupancy}`;
       if (!exists.length) {
         await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TEXT, date DATE)`;
-        await sql`INSERT INTO occupancy_data (occupancy, timestamp, date) VALUES (${occupancy}, ${
+        const timestamp =
           getWestCoastTime().split(" ")[1] +
           " " +
-          getWestCoastTime().split(" ")[2]
-        }, ${new Date().toISOString().split("T")[0]})`;
-        console.log("Occupancy data saved to database");
+          getWestCoastTime().split(" ")[2];
+        const date = getWestCoastDate();
+        await sql`INSERT INTO occupancy_data (occupancy, timestamp, date) VALUES (${occupancy}, ${timestamp}, ${date})`;
+        console.log(
+          `Occupancy data saved to database - Date: ${date}, Time: ${timestamp}, Occupancy: ${occupancy}`
+        );
       } else {
         throw new Error("Occupancy data already exists");
       }
@@ -170,16 +185,20 @@ function isOpen() {
   return false;
 }
 export async function GET() {
-  console.log("=== CRON ENDPOINT HIT ===", new Date().toISOString());
+  const requestId = Math.random().toString(36).substr(2, 9);
+  console.log(
+    `=== CRON ENDPOINT HIT [${requestId}] ===`,
+    new Date().toISOString()
+  );
   console.log("Request received at:", getWestCoastTime());
 
   try {
     // Process occupancy data (this will be called by cron-job.org every minute)
-    console.log("Checking if facility is open...");
+    console.log(`[${requestId}] Checking if facility is open...`);
     const openStatus = isOpen();
 
     if (!openStatus) {
-      console.log("Facility is CLOSED - returning early");
+      console.log(`[${requestId}] Facility is CLOSED - returning early`);
       return NextResponse.json({
         success: true,
         occupancy: null,
@@ -187,7 +206,9 @@ export async function GET() {
         message: "Facility is closed",
       });
     }
-    console.log("Facility is OPEN - processing occupancy data...");
+    console.log(
+      `[${requestId}] Facility is OPEN - processing occupancy data...`
+    );
     await processOccupancyData();
 
     const occupancy = await getOccupancy(

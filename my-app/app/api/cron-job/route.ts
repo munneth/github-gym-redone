@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
 import { neon } from "@neondatabase/serverless";
 
+const MAX_OCCUPANCY_RECORDS = 48;
+
 export async function getContent(url: string) {
   const response = await fetch(url);
   const content = await response.text();
@@ -59,7 +61,23 @@ export async function getOccupancyInterval(url: string) {
   return null;
 }
 
-// This function will be called by cron-job.org every minute
+async function keepLatestOccupancyRecords(
+  sql: ReturnType<typeof neon>
+) {
+  await sql`
+    DELETE FROM occupancy_data
+    WHERE ctid IN (
+      SELECT ctid
+      FROM occupancy_data
+      ORDER BY
+        date DESC,
+        to_timestamp(timestamp, 'HH12:MI:SS AM')::time DESC
+      OFFSET ${MAX_OCCUPANCY_RECORDS}
+    )
+  `;
+}
+
+// This route is invoked every 30 minutes by the platform cron configuration.
 async function processOccupancyData() {
   console.log("=== PROCESSING OCCUPANCY DATA ===");
   console.log("Running job at:", new Date().toISOString());
@@ -78,13 +96,19 @@ async function processOccupancyData() {
         throw new Error("DATABASE_URL not found");
       }
       const sql = neon(process.env.DATABASE_URL);
+      await sql`
+        CREATE TABLE IF NOT EXISTS occupancy_data (
+          occupancy TEXT,
+          timestamp TEXT,
+          date DATE
+        )
+      `;
       const exists = await sql`SELECT * FROM occupancy_data WHERE timestamp = ${
         getWestCoastTime().split(" ")[1] +
         " " +
         getWestCoastTime().split(" ")[2]
       } AND date = ${getWestCoastDate()} AND occupancy = ${occupancy}`;
       if (!exists.length) {
-        await sql`CREATE TABLE IF NOT EXISTS occupancy_data ( occupancy TEXT, timestamp TEXT, date DATE)`;
         const timestamp =
           getWestCoastTime().split(" ")[1] +
           " " +
@@ -95,8 +119,10 @@ async function processOccupancyData() {
           `Occupancy data saved to database - Date: ${date}, Time: ${timestamp}, Occupancy: ${occupancy}`
         );
       } else {
-        throw new Error("Occupancy data already exists");
+        console.log("Occupancy data already exists");
       }
+      await keepLatestOccupancyRecords(sql);
+      console.log(`Retained the latest ${MAX_OCCUPANCY_RECORDS} occupancy records`);
     }
 
     console.log("Job completed - Occupancy:", occupancy, "Time:", time);
@@ -184,7 +210,18 @@ function isOpen() {
   console.log("  Facility is CLOSED - no conditions met");
   return false;
 }
-export async function GET() {
+export async function GET(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (
+    cronSecret &&
+    request.headers.get("authorization") !== `Bearer ${cronSecret}`
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
   const requestId = Math.random().toString(36).substr(2, 9);
   console.log(
     `=== CRON ENDPOINT HIT [${requestId}] ===`,
@@ -193,7 +230,7 @@ export async function GET() {
   console.log("Request received at:", getWestCoastTime());
 
   try {
-    // Process occupancy data (this will be called by cron-job.org every minute)
+    // Process one scheduled occupancy sample.
     console.log(`[${requestId}] Checking if facility is open...`);
     const openStatus = isOpen();
 
@@ -220,7 +257,7 @@ export async function GET() {
       success: true,
       occupancy,
       time,
-      message: "Endpoint ready for cron-job.org to call every minute",
+      message: "Occupancy sample processed by the scheduled cron job",
     });
   } catch (error) {
     return NextResponse.json(

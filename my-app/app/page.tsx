@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { ChartBarLabel } from "@/components/chartProd";
 import Form from "@/components/form";
 
@@ -7,7 +6,7 @@ export default function Home() {
     <>
       <div>
         <h1>Occupancy</h1>
-        <p>Check the console for cron job logs</p>
+        <p>Occupancy is sampled automatically every 30 minutes.</p>
         <p>
           West Coast Time:{" "}
           {new Date().toLocaleString("en-US", {

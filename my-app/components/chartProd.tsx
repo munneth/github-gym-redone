@@ -21,6 +21,39 @@ import {
 
 export const description = "A bar chart showing gym occupancy data";
 
+type OccupancySample = {
+  timestamp: string;
+  occupancy: string;
+  date: string;
+};
+
+type ChartDatum = {
+  time: string;
+  date: string;
+  fullDateTime: string;
+  occupancy: number;
+};
+
+const monthNames = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function formatStoredDate(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return `${monthNames[month - 1]} ${day}, ${year}`;
+}
+
 const chartConfig = {
   occupancy: {
     label: "24 Hour Occupancy",
@@ -29,7 +62,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function ChartBarLabel() {
-  const [chartData, setChartData] = useState([]);
+  const [chartData, setChartData] = useState<ChartDatum[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,39 +72,20 @@ export function ChartBarLabel() {
         const json = await fetch("/api/chart-data");
         const data = await json.json();
         if (data.success) {
-          const processedData = data.data.map(
-            (data: { timestamp: string; occupancy: string; date: string }) => {
-              // Simple parsing for format: "06:00:05 PM"
-              const [timePart, ampm] = data.timestamp.split(" "); // ["06:00:05", "PM"]
-              const [hours, minutes] = timePart.split(":"); // ["06", "00", "05"]
-              const timeOnly = `${hours}:${minutes}`; // "06:00"
+          const processedData = data.data.map((sample: OccupancySample) => {
+            // Simple parsing for format: "06:00:05 PM"
+            const [timePart, ampm] = sample.timestamp.split(" ");
+            const [hours, minutes] = timePart.split(":");
+            const timeOnly = `${hours}:${minutes}`;
+            const formattedDate = formatStoredDate(sample.date);
 
-              // Format the date
-              const dateObj = new Date(data.date);
-              const formattedDate = dateObj.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
-
-              return {
-                time: `${timeOnly} ${ampm}`,
-                date: formattedDate,
-                fullDateTime: `${formattedDate} ${timeOnly} ${ampm}`,
-                occupancy: parseInt(data.occupancy), // Convert to number for proper max calculation
-              };
-            }
-          );
-
-          // Debug: Check the actual max value
-          const maxOccupancy = Math.max(
-            ...processedData.map((d: { occupancy: number }) => d.occupancy)
-          );
-          console.log("Max occupancy in data:", maxOccupancy);
-          console.log(
-            "All occupancy values:",
-            processedData.map((d: { occupancy: number }) => d.occupancy)
-          );
+            return {
+              time: `${timeOnly} ${ampm}`,
+              date: formattedDate,
+              fullDateTime: `${formattedDate} ${timeOnly} ${ampm}`,
+              occupancy: Number(sample.occupancy),
+            };
+          });
 
           setChartData(processedData);
           console.log(

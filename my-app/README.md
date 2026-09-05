@@ -20,16 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ## Scheduled occupancy collection
 
-When deployed to Vercel with `my-app` configured as the project root, `vercel.json`
-invokes `/api/cron-job` every 30 minutes. The route collects one occupancy sample
-and retains only the 48 newest database records (one day of half-hour samples).
+Vercel Hobby cron jobs cannot run at the required half-hour cadence, so configure
+an external scheduler, such as cron-job.org, to send a `GET` request to
+`https://<your-deployment>/api/cron-job` every 30 minutes. The route collects one
+occupancy sample and retains only the 48 newest database records (one day of
+half-hour samples).
 
 Set these production environment variables:
 
 - `DATABASE_URL`: the Neon Postgres connection string.
 - `CRON_SECRET`: an optional secret used to require `Bearer <CRON_SECRET>` on the
-  cron endpoint. When configured, set the same value in Vercel so scheduled
-  requests are authorized.
+  cron endpoint. When configured, set the external scheduler's `Authorization`
+  request header to `Bearer <CRON_SECRET>`.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

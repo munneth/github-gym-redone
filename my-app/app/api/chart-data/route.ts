@@ -8,7 +8,6 @@ type OccupancyRecord = {
   occupancy: string;
   timestamp: string;
   date: string;
-  recorded_at: string;
 };
 
 export async function GET() {
@@ -19,12 +18,18 @@ export async function GET() {
 
     const sql = neon(process.env.DATABASE_URL);
     const recentSamples = (await sql`
-      SELECT occupancy, timestamp, date, recorded_at
+      SELECT
+        occupancy::text AS occupancy,
+        timestamp::text AS timestamp,
+        date::text AS date
       FROM occupancy_data
       WHERE recorded_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
       ORDER BY recorded_at ASC NULLS FIRST, ctid ASC
     `) as OccupancyRecord[];
 
+    // PostgreSQL DATE values are decoded as Date objects by some database drivers.
+    // Cast fields used by the chart to text so the API always matches its string
+    // contract before passing them to the date and time helpers.
     // The collector may run while the ARC is closed. Do not expose those rows.
     const chartData = recentSamples.filter((sample) =>
       isArcOpen(sample.date, sample.timestamp)

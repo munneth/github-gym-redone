@@ -18,19 +18,6 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## Scheduled occupancy collection
-
-When deployed to Vercel with `my-app` configured as the project root, `vercel.json`
-invokes `/api/cron-job` every 30 minutes. The route collects one occupancy sample
-and retains only the 48 newest database records (one day of half-hour samples).
-
-Set these production environment variables:
-
-- `DATABASE_URL`: the Neon Postgres connection string.
-- `CRON_SECRET`: an optional secret used to require `Bearer <CRON_SECRET>` on the
-  cron endpoint. When configured, set the same value in Vercel so scheduled
-  requests are authorized.
-
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

@@ -7,6 +7,10 @@ export default function Home() {
     <>
       <div>
         <h1>Occupancy</h1>
+
+        <p>Occupancy data is displayed from the database.</p>
+        <p>West Coast Time: <PacificTime /></p>
+
         <p>Occupancy is sampled automatically every 30 minutes.</p>
         <p>
           West Coast Time:{" "}

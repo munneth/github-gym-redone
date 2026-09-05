@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
 const MAX_OCCUPANCY_RECORDS = 48;
 
@@ -62,7 +62,7 @@ export async function getOccupancyInterval(url: string) {
 }
 
 async function keepLatestOccupancyRecords(
-  sql: ReturnType<typeof neon>
+  sql: NeonQueryFunction<false, false>
 ) {
   await sql`
     DELETE FROM occupancy_data

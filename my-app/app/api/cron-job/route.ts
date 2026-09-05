@@ -65,29 +65,19 @@ async function keepLatestOccupancyRecords(
   sql: NeonQueryFunction<false, false>
 ) {
   await sql`
-    WITH current_time AS (
-      SELECT CURRENT_TIMESTAMP AT TIME ZONE 'America/Los_Angeles' AS value
-    ), ranked_records AS (
-      SELECT
-        ctid,
-        date::date + to_timestamp(timestamp, 'HH12:MI:SS AM')::time AS recorded_at,
-        ROW_NUMBER() OVER (
-          ORDER BY date DESC, to_timestamp(timestamp, 'HH12:MI:SS AM')::time DESC
-        ) AS row_number
-      FROM occupancy_data
-    )
     DELETE FROM occupancy_data
-    USING ranked_records, current_time
-    WHERE occupancy_data.ctid = ranked_records.ctid
-      AND (
-        ranked_records.recorded_at < current_time.value - INTERVAL '24 hours'
-        OR ranked_records.recorded_at > current_time.value
-        OR ranked_records.row_number > ${MAX_OCCUPANCY_RECORDS}
-      )
+    WHERE ctid IN (
+      SELECT ctid
+      FROM occupancy_data
+      ORDER BY
+        date DESC,
+        to_timestamp(timestamp, 'HH12:MI:SS AM')::time DESC
+      OFFSET ${MAX_OCCUPANCY_RECORDS}
+    )
   `;
 }
 
-// An external scheduler invokes this route every 30 minutes.
+// This route is invoked every 30 minutes by the platform cron configuration.
 async function processOccupancyData() {
   console.log("=== PROCESSING OCCUPANCY DATA ===");
   console.log("Running job at:", new Date().toISOString());
@@ -267,7 +257,7 @@ export async function GET(request: Request) {
       success: true,
       occupancy,
       time,
-      message: "Occupancy sample processed by the external scheduler",
+      message: "Occupancy sample processed by the scheduled cron job",
     });
   } catch (error) {
     return NextResponse.json(

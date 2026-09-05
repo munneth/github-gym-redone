@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 
+export const dynamic = "force-dynamic";
+
 type OccupancyRecord = {
   occupancy: string;
   timestamp: string;
@@ -16,20 +18,15 @@ export async function GET() {
 
     const sql = neon(process.env.DATABASE_URL);
     const chartData = (await sql`
-      WITH samples AS (
-        SELECT
-          occupancy,
-          timestamp,
-          date,
-          date::date + to_timestamp(timestamp, 'HH12:MI:SS AM')::time AS recorded_at
+      WITH latest_samples AS (
+        SELECT occupancy, timestamp, date, recorded_at, ctid
         FROM occupancy_data
+        ORDER BY recorded_at DESC NULLS LAST, ctid DESC
+        LIMIT 48
       )
       SELECT occupancy, timestamp, date, recorded_at
-      FROM samples
-      WHERE recorded_at BETWEEN
-        (CURRENT_TIMESTAMP AT TIME ZONE 'America/Los_Angeles') - INTERVAL '24 hours'
-        AND CURRENT_TIMESTAMP AT TIME ZONE 'America/Los_Angeles'
-      ORDER BY recorded_at ASC
+      FROM latest_samples
+      ORDER BY recorded_at ASC NULLS FIRST, ctid ASC
     `) as OccupancyRecord[];
 
     const bestTime = [...chartData]

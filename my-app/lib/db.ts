@@ -1,6 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 
-async function getData() {
+export async function getData() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL not found");
   }

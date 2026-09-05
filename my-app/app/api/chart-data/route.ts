@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     const sql = neon(process.env.DATABASE_URL);
-    const chartData = await sql<OccupancyRecord>`
+    const chartData = (await sql`
       WITH samples AS (
         SELECT
           occupancy,
@@ -30,7 +30,7 @@ export async function GET() {
         (CURRENT_TIMESTAMP AT TIME ZONE 'America/Los_Angeles') - INTERVAL '24 hours'
         AND CURRENT_TIMESTAMP AT TIME ZONE 'America/Los_Angeles'
       ORDER BY recorded_at ASC
-    `;
+    `) as OccupancyRecord[];
 
     const bestTime = [...chartData]
       .sort((a, b) => Number(a.occupancy) - Number(b.occupancy))

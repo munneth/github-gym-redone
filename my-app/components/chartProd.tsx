@@ -45,6 +45,7 @@ type ChartResponse = {
   success: boolean;
   data: OccupancySample[];
   openHours: OpenHour[];
+  error?: string;
 };
 
 const monthNames = [
@@ -85,63 +86,68 @@ const chartConfig = {
 
 export function ChartBarLabel() {
   const [chartData, setChartData] = useState<ChartDatum[]>([]);
-  const [openHourKeys, setOpenHourKeys] = useState<string[]>([]);
   const [sampleCount, setSampleCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch data from the last 24 hours only
-        const response = await fetch("/api/chart-data");
+        setError(null);
+        const response = await fetch("/api/chart-data", { cache: "no-store" });
         const data: ChartResponse = await response.json();
-        if (data.success) {
-          const samplesByHour = new Map<string, ChartDatum>();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error ?? "Could not load occupancy data");
+        }
 
-          data.data.forEach((sample) => {
-            const key = getSampleKey(sample.date, sample.timestamp);
-            if (!key) return;
+        const samplesByHour = new Map<string, ChartDatum>();
 
-            const [timePart, ampm] = sample.timestamp.split(" ");
-            const [hours, minutes] = timePart.split(":");
-            const time = `${hours}:${minutes} ${ampm}`;
-            const formattedDate = formatStoredDate(sample.date);
+        data.data.forEach((sample) => {
+          const key = getSampleKey(sample.date, sample.timestamp);
+          if (!key) return;
 
+          const [timePart, ampm] = sample.timestamp.split(" ");
+          const [hours, minutes] = timePart.split(":");
+          const time = `${hours}:${minutes} ${ampm}`;
+          const formattedDate = formatStoredDate(sample.date);
+
+          samplesByHour.set(key, {
+            key,
+            time,
+            date: formattedDate,
+            fullDateTime: `${formattedDate} ${time}`,
+            occupancy: Number(sample.occupancy),
+          });
+        });
+
+        // Empty entries provide an hourly x-axis mark without inventing occupancy data.
+        data.openHours.forEach(({ key, label }) => {
+          if (!samplesByHour.has(key)) {
+            const [storedDate] = key.split("|");
             samplesByHour.set(key, {
               key,
-              time,
-              date: formattedDate,
-              fullDateTime: `${formattedDate} ${time}`,
-              occupancy: Number(sample.occupancy),
+              time: label,
+              date: formatStoredDate(storedDate),
+              fullDateTime: `${formatStoredDate(storedDate)} ${label}`,
+              occupancy: null,
             });
-          });
+          }
+        });
 
-          // Empty entries provide an hourly x-axis mark without inventing occupancy data.
-          data.openHours.forEach(({ key, label }) => {
-            if (!samplesByHour.has(key)) {
-              const [storedDate] = key.split("|");
-              samplesByHour.set(key, {
-                key,
-                time: label,
-                date: formatStoredDate(storedDate),
-                fullDateTime: `${formatStoredDate(storedDate)} ${label}`,
-                occupancy: null,
-              });
-            }
-          });
-
-          const processedData = [...samplesByHour.values()].sort(
-            (a, b) => chartOrder(a.key) - chartOrder(b.key)
-          );
-          setChartData(processedData);
-          setSampleCount(data.data.length);
-          setOpenHourKeys(data.openHours.map(({ key }) => key));
-          console.log(
-            `Chart updated with ${data.data.length} open data points from the last 24 hours`
-          );
-        }
+        const processedData = [...samplesByHour.values()].sort(
+          (a, b) => chartOrder(a.key) - chartOrder(b.key)
+        );
+        setChartData(processedData);
+        setSampleCount(data.data.length);
+        console.log(
+          `Chart updated with ${data.data.length} open data points from the last 24 hours`
+        );
       } catch (error) {
         console.error("Error fetching chart data:", error);
+        setError(
+          error instanceof Error ? error.message : "Could not load occupancy data"
+        );
       } finally {
         setLoading(false);
       }
@@ -170,8 +176,6 @@ export function ChartBarLabel() {
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="key"
-              ticks={openHourKeys}
-              interval={0}
               tickLine={false}
               tickMargin={10}
               axisLine={false}
@@ -208,7 +212,13 @@ export function ChartBarLabel() {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 leading-none font-medium">
-          {loading ? "Loading data..." : `${sampleCount} data points`}{" "}
+          {loading
+            ? "Loading data..."
+            : error
+              ? `Unable to load data: ${error}`
+              : sampleCount > 0
+                ? `${sampleCount} data points`
+                : "No open-hour samples recorded yet"}{" "}
           <TrendingUp className="h-4 w-4" />
         </div>
         <div className="text-muted-foreground leading-none">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { getOpenHoursInLast24Hours, isArcOpen } from "@/lib/arc-hours";
 
 export const dynamic = "force-dynamic";
 
@@ -17,17 +18,17 @@ export async function GET() {
     }
 
     const sql = neon(process.env.DATABASE_URL);
-    const chartData = (await sql`
-      WITH latest_samples AS (
-        SELECT occupancy, timestamp, date, recorded_at, ctid
-        FROM occupancy_data
-        ORDER BY recorded_at DESC NULLS LAST, ctid DESC
-        LIMIT 48
-      )
+    const recentSamples = (await sql`
       SELECT occupancy, timestamp, date, recorded_at
-      FROM latest_samples
+      FROM occupancy_data
+      WHERE recorded_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
       ORDER BY recorded_at ASC NULLS FIRST, ctid ASC
     `) as OccupancyRecord[];
+
+    // The collector may run while the ARC is closed. Do not expose those rows.
+    const chartData = recentSamples.filter((sample) =>
+      isArcOpen(sample.date, sample.timestamp)
+    );
 
     const bestTime = [...chartData]
       .sort((a, b) => Number(a.occupancy) - Number(b.occupancy))
@@ -37,6 +38,7 @@ export async function GET() {
       success: true,
       data: chartData,
       bestTime,
+      openHours: getOpenHoursInLast24Hours(),
     });
   } catch (error) {
     return NextResponse.json(

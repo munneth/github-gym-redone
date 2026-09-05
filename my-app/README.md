@@ -18,6 +18,19 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Scheduled occupancy collection
+
+Configure your external cron service to send a `GET` request to
+`https://<your-domain>/api/cron-job` every 30 minutes. The route fetches the
+facility occupancy, stores the Pacific date, time, and occupancy in Neon, and
+deletes the oldest rows after each successful insert so only the latest 48
+samples remain.
+
+Set `DATABASE_URL` to the Neon Postgres connection string. Optionally set
+`CRON_SECRET` and send it from the cron service as
+`Authorization: Bearer <CRON_SECRET>` to prevent unauthenticated requests. Set
+`OCCUPANCY_URL` only if the source facility page changes.
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
